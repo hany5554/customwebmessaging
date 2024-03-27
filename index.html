@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genesys Chat</title>
+    <style>
+        /* CSS for chat window */
+        #chat-container {
+            width: 300px;
+            height: 400px;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            margin-bottom: 20px;
+            padding: 10px;
+        }
+
+        #message-input {
+            width: 100%;
+            padding: 5px;
+        }
+    </style>
+
+<script type="text/javascript" charset="utf-8">
+    (function (g, e, n, es, ys) {
+      g['_genesysJs'] = e;
+      g[e] = g[e] || function () {
+        (g[e].q = g[e].q || []).push(arguments)
+      };
+      g[e].t = 1 * new Date();
+      g[e].c = es;
+      ys = document.createElement('script'); ys.async = 1; ys.src = n; ys.charset = 'utf-8'; document.head.appendChild(ys);
+    })(window, 'Genesys', 'https://apps.mypurecloud.ie/genesys-bootstrap/genesys.min.js', {
+      environment: 'prod-euw1',
+      deploymentId: '345f7b50-d589-423d-8364-0af50a326bff'
+    });
+  </script>
+    
+</head>
+<body>
+    <div id="chat-container"></div>
+    <input type="text" id="message-input" placeholder="Type your message...">
+    <button id="start-btn">Start Chat</button>
+    <button id="send-btn">Send</button>
+    <button id="disc-btn">Disconnect Chat</button>
+    <button id="del-btn">Delete Local Storage</button>
+
+
+    <script>
+        
+        Genesys("registerPlugin", "Plugin", function(Plugin) {
+            Plugin.command("GenesysJS.configuration").then( (data) => { console.log("Deployment configuration", data)} );
+        });
+
+        Genesys('subscribe', 'MessagingService.ready', () => {
+            console.log("MessagingService is ready!")
+             /* Genesys("command", "MessagingService.startConversation",
+                {},
+                function() {
+                    console.log("Conversation Started! WebSocket initiated")
+                },
+                function() {
+                    console.log("Error unable to start!")
+                }
+            ); */
+        });
+
+        // Function to add message to chat container
+        function addMessageToChat(message) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            chatContainer.appendChild(messageElement);
+            // Scroll to bottom of chat
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Function to handle sending message
+        function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const message_user = messageInput.value.trim();
+            if (message_user !== '') {
+                messageInput.value = ''; // Clear input field
+                Genesys("command", "MessagingService.sendMessage", {
+                    message: message_user
+                    },
+                    function() {
+                        console.log("Message sent!")
+                    },
+                    function() {
+                        console.log("Unable to send message!")
+                     }
+                );
+            }
+        }
+
+        function clearSession(){
+            Genesys("command", "MessagingService.clearSession",
+                {},
+                    function() {
+                        console.log("Session has been cleared")
+                    },
+                    function() {
+                        console.log("Error, session can't be cleared")
+                    }
+                );
+        }
+
+        function startChat(){
+              Genesys("command", "MessagingService.startConversation",
+                {},
+                function() {
+                    console.log("Conversation Started! WebSocket initiated")
+                },
+                function() {
+                    console.log("Error unable to start!")
+                }
+            ); 
+
+        }
+
+        function removeLocalValues(){
+            localStorage.removeItem('_actmu');
+            localStorage.removeItem('_actms');
+            localStorage.removeItem('_actts');
+            localStorage.removeItem('_actvc')
+
+        }
+
+        Genesys("subscribe", "MessagingService.started", function({data}){
+            console.log(data)
+            console.log("MessageService.started event published!")
+        });
+
+        // Event listener for send button click
+        document.getElementById('send-btn').addEventListener('click', sendMessage);
+        
+        // Event listener for disconnect button click
+        document.getElementById('disc-btn').addEventListener('click', clearSession);
+
+        // Event listener for start chat button click
+        document.getElementById('start-btn').addEventListener('click', startChat);
+
+        // Event listener for Delete button click
+        document.getElementById('del-btn').addEventListener('click', removeLocalValues);
+
+        // Event listener for pressing Enter key in input field
+        document.getElementById('message-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Event listener for incoming messages
+        Genesys("subscribe", "MessagingService.messagesReceived", function({ data }) {
+            var messagesArray = data.messages;
+            console.log(messagesArray)
+            var firstMessage = messagesArray[0];
+            console.log(firstMessage)
+            var messageText = firstMessage.text
+            console.log(messageText);
+            addMessageToChat(messageText)
+            
+});
+    </script>
+</body>
+</html>
